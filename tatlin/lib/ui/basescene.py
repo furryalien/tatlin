@@ -35,6 +35,10 @@ class BaseScene(glcanvas.GLCanvas):
         self.Bind(wx.EVT_SIZE, self._on_size)
         self.Bind(wx.EVT_PAINT, self._on_paint)
         self.Bind(wx.EVT_LEFT_DOWN, self._on_mouse_down)
+        # also bind right and middle button down so panning/offset works when
+        # user starts dragging with those buttons
+        self.Bind(wx.EVT_RIGHT_DOWN, self._on_mouse_down)
+        self.Bind(wx.EVT_MIDDLE_DOWN, self._on_mouse_down)
         self.Bind(wx.EVT_MOTION, self._on_mouse_motion)
 
         # make it unnecessary for the scene to be in focus to respond to the
@@ -98,9 +102,37 @@ class BaseScene(glcanvas.GLCanvas):
         event.Skip()
 
     def _set_viewport(self):
+        """Set GL viewport using physical framebuffer size (DPI aware).
+
+        wx returns logical client size via GetClientSize(); on HiDPI displays
+        the actual framebuffer size may be scaled by a content scale factor.
+        Use GetContentScaleFactor() when available to compute the physical
+        dimensions for glViewport and the projection matrices.
+        """
         self.SetCurrent(self.context)
         size = self.GetClientSize()
-        self.reshape(size.width, size.height)
+        try:
+            scale = 1.0
+            if hasattr(self, "GetContentScaleFactor"):
+                try:
+                    scale = self.GetContentScaleFactor()
+                except Exception:
+                    scale = 1.0
+            phys_w = int(size.width * scale)
+            phys_h = int(size.height * scale)
+            import logging
+
+            logging.info(
+                "BaseScene._set_viewport logical size: (%s, %s) scale: %s phys: (%s, %s)",
+                size.width,
+                size.height,
+                scale,
+                phys_w,
+                phys_h,
+            )
+        except Exception:
+            phys_w, phys_h = size.width, size.height
+        self.reshape(phys_w, phys_h)
 
     def _on_paint(self, event):
         dc = wx.PaintDC(self)
@@ -109,12 +141,43 @@ class BaseScene(glcanvas.GLCanvas):
             self.init()
             self.initialized = True
         size = self.GetClientSize()
-        self.display(size.width, size.height)
+        # Account for display scaling (HiDPI) when calling display so the
+        # projection and viewport are set to the physical framebuffer size
+        try:
+            scale = 1.0
+            if hasattr(self, "GetContentScaleFactor"):
+                try:
+                    scale = self.GetContentScaleFactor()
+                except Exception:
+                    scale = 1.0
+            phys_w = int(size.width * scale)
+            phys_h = int(size.height * scale)
+            import logging
+
+            logging.info(
+                "BaseScene._on_paint logical size: (%s, %s) scale: %s phys: (%s, %s)",
+                size.width,
+                size.height,
+                scale,
+                phys_w,
+                phys_h,
+            )
+        except Exception:
+            phys_w, phys_h = size.width, size.height
+        self.display(phys_w, phys_h)
         self.SwapBuffers()
 
     def _on_mouse_down(self, event):
         self.SetFocus()
         x, y = event.GetPosition()
+        # Convert to physical coordinates if content-scale factor is present
+        try:
+            if hasattr(self, "GetContentScaleFactor"):
+                scale = self.GetContentScaleFactor()
+                x = int(x * scale)
+                y = int(y * scale)
+        except Exception:
+            pass
         self.button_press(x, y)
 
     def _on_mouse_motion(self, event):
@@ -122,6 +185,13 @@ class BaseScene(glcanvas.GLCanvas):
         left = event.LeftIsDown()
         middle = event.MiddleIsDown()
         right = event.RightIsDown()
+        try:
+            if hasattr(self, "GetContentScaleFactor"):
+                scale = self.GetContentScaleFactor()
+                x = int(x * scale)
+                y = int(y * scale)
+        except Exception:
+            pass
         self.button_motion(x, y, left, middle, right)
 
     def _on_mouse_wheel(self, event):

@@ -192,6 +192,12 @@ class View3D(ViewMode):
         self.push_state()
 
     def begin(self, w, h):
+        try:
+            import logging
+
+            logging.info("View3D.begin with size: (%s, %s), ortho=%s", w, h, self.ortho)
+        except Exception:
+            pass
         glMatrixMode(GL_PROJECTION)
         glPushMatrix()
         glLoadIdentity()

@@ -59,6 +59,24 @@ class MainWindow(wx.Frame):
         self.Bind(wx.EVT_MENU, app.on_quit, item_quit)
         self.Bind(wx.EVT_MENU, app.on_about, item_about)
 
+        # Keyboard accelerators for zoom and reset view
+        self._id_zoom_in = wx.NewIdRef()
+        self._id_zoom_out = wx.NewIdRef()
+        self._id_reset_view = wx.NewIdRef()
+
+        accel_entries = [
+            (wx.ACCEL_CTRL, wx.WXK_ADD, int(self._id_zoom_in)),
+            (wx.ACCEL_CTRL, ord("="), int(self._id_zoom_in)),
+            (wx.ACCEL_CTRL, wx.WXK_SUBTRACT, int(self._id_zoom_out)),
+            (wx.ACCEL_CTRL, ord("-"), int(self._id_zoom_out)),
+            (wx.ACCEL_CTRL, ord("0"), int(self._id_reset_view)),
+        ]
+        self.SetAcceleratorTable(wx.AcceleratorTable(accel_entries))
+
+        self.Bind(wx.EVT_MENU, app.on_zoom_in, id=int(self._id_zoom_in))
+        self.Bind(wx.EVT_MENU, app.on_zoom_out, id=int(self._id_zoom_out))
+        self.Bind(wx.EVT_MENU, app.on_reset_view, id=int(self._id_reset_view))
+
         self.box_scene = wx.BoxSizer(wx.HORIZONTAL)
 
         self.panel_startup = StartupPanel(self)

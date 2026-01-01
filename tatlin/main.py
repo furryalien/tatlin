@@ -179,6 +179,24 @@ class App(BaseApp):
         if self.save_changes_dialog():
             self.window.quit()
 
+    def on_zoom_in(self, event=None):
+        """Handler for zoom-in keyboard shortcut."""
+        if self.scene:
+            self.scene.zoom_in()
+            self.scene.invalidate()
+
+    def on_zoom_out(self, event=None):
+        """Handler for zoom-out keyboard shortcut."""
+        if self.scene:
+            self.scene.zoom_out()
+            self.scene.invalidate()
+
+    def on_reset_view(self, event=None):
+        """Handler for reset view keyboard shortcut (Ctrl+0)."""
+        if self.scene:
+            self.scene.reset_view()
+            self.scene.invalidate()
+
     def save_changes_dialog(self):
         proceed = True
         if self.scene and self.scene.model_modified:

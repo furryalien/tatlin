@@ -91,6 +91,11 @@ class Scene(BaseScene):
                 actor.init()
 
     def display(self, w, h):
+        # debug: log viewport size
+        try:
+            logging.info("Scene.display called with size: (%s, %s)", w, h)
+        except Exception:
+            pass
         # clear the color and depth buffers from any leftover junk
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)  # type:ignore
 
@@ -195,24 +200,70 @@ class Scene(BaseScene):
     def button_press(self, x, y):
         self.cursor_x = x
         self.cursor_y = y
+        logging.debug("Mouse button press at (%s, %s)", x, y)
+
+    def button_motion(self, x, y, left, middle, right):
+        delta_x = x - self.cursor_x
+        delta_y = y - self.cursor_y
+
+        logging.debug(
+            "Mouse motion: x=%s y=%s delta_x=%s delta_y=%s left=%s middle=%s right=%s",
+            x,
+            y,
+            delta_x,
+            delta_y,
+            left,
+            middle,
+            right,
+        )
 
     def button_motion(self, x, y, left, middle, right):
         delta_x = x - self.cursor_x
         delta_y = y - self.cursor_y
 
         if left:
+            logging.debug("Rotating view by (%s, %s)", delta_x, delta_y)
             self.current_view.rotate(
                 delta_x * self.ROTATE_SPEED / 100, delta_y * self.ROTATE_SPEED / 100
             )
         elif middle:
             if hasattr(self.current_view, "offset"):
+                logging.debug("Offsetting view by (%s, %s)", delta_x, delta_y)
                 self.current_view.offset(  # type:ignore
                     delta_x * self.PAN_SPEED / 100, delta_y * self.PAN_SPEED / 100
                 )
+            else:
+                logging.debug("Current view has no 'offset' method; ignoring middle-drag")
         elif right:
+            logging.debug("Panning view by (%s, %s)", delta_x, delta_y)
             self.current_view.pan(
                 delta_x * self.PAN_SPEED / 100, delta_y * self.PAN_SPEED / 100
             )
+
+        # Log resulting view state and model offsets for debugging
+        try:
+            cv = self.current_view
+            logging.info(
+                "View state after interaction: type=%s x=%s y=%s z=%s offset_x=%s offset_y=%s zoom=%s azimuth=%s elevation=%s",
+                type(cv).__name__,
+                getattr(cv, "x", None),
+                getattr(cv, "y", None),
+                getattr(cv, "z", None),
+                getattr(cv, "offset_x", None),
+                getattr(cv, "offset_y", None),
+                getattr(cv, "zoom_factor", None),
+                getattr(cv, "azimuth", None),
+                getattr(cv, "elevation", None),
+            )
+            if hasattr(self, "model") and self.model is not None:
+                logging.info(
+                    "Model offsets: offset_x=%s offset_y=%s offset_z=%s",
+                    getattr(self.model, "offset_x", None),
+                    getattr(self.model, "offset_y", None),
+                    getattr(self.model, "offset_z", None),
+                )
+        except Exception:
+            logging.exception("Error while logging view/model state after interaction")
 
         self.cursor_x = x
         self.cursor_y = y
@@ -227,6 +278,22 @@ class Scene(BaseScene):
             direction = 1
         delta_y = direction * delta_y
 
+        self.current_view.zoom(0, delta_y)
+        self.invalidate()
+
+    def zoom_in(self, steps: int = 1):
+        """
+        Programmatic zoom in (each step is one mouse-wheel tick).
+        """
+        delta_y = 30.0 * steps
+        self.current_view.zoom(0, delta_y)
+        self.invalidate()
+
+    def zoom_out(self, steps: int = 1):
+        """
+        Programmatic zoom out (each step is one mouse-wheel tick).
+        """
+        delta_y = -30.0 * steps
         self.current_view.zoom(0, delta_y)
         self.invalidate()
 
