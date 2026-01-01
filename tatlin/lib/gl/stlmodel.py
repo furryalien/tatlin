@@ -103,51 +103,51 @@ class StlModel(Model):
 
     def draw_facets(self):
         glPushMatrix()
+        try:
+            glEnable(GL_LIGHT0)
+            glEnable(GL_LIGHT1)
+            glShadeModel(GL_SMOOTH)
 
-        glEnable(GL_LIGHT0)
-        glEnable(GL_LIGHT1)
-        glShadeModel(GL_SMOOTH)
+            # material properties (white plastic)
+            glMaterial(GL_FRONT, GL_AMBIENT, (0.0, 0.0, 0.0, 1.0))
+            glMaterial(GL_FRONT, GL_DIFFUSE, (0.55, 0.55, 0.55, 1.0))
+            glMaterial(GL_FRONT, GL_SPECULAR, (0.7, 0.7, 0.7, 1.0))
+            glMaterial(GL_FRONT, GL_SHININESS, 32.0)
 
-        # material properties (white plastic)
-        glMaterial(GL_FRONT, GL_AMBIENT, (0.0, 0.0, 0.0, 1.0))
-        glMaterial(GL_FRONT, GL_DIFFUSE, (0.55, 0.55, 0.55, 1.0))
-        glMaterial(GL_FRONT, GL_SPECULAR, (0.7, 0.7, 0.7, 1.0))
-        glMaterial(GL_FRONT, GL_SHININESS, 32.0)
+            # lights properties
+            glLight(GL_LIGHT0, GL_AMBIENT, (0.3, 0.3, 0.3, 1.0))
+            glLight(GL_LIGHT0, GL_DIFFUSE, (0.3, 0.3, 0.3, 1.0))
+            glLight(GL_LIGHT1, GL_DIFFUSE, (0.3, 0.3, 0.3, 1.0))
 
-        # lights properties
-        glLight(GL_LIGHT0, GL_AMBIENT, (0.3, 0.3, 0.3, 1.0))
-        glLight(GL_LIGHT0, GL_DIFFUSE, (0.3, 0.3, 0.3, 1.0))
-        glLight(GL_LIGHT1, GL_DIFFUSE, (0.3, 0.3, 0.3, 1.0))
+            # lights position
+            glLightfv(GL_LIGHT0, GL_POSITION, self.light_position)
+            glLightfv(GL_LIGHT1, GL_POSITION, (-20.0, -20.0, 20.0))
 
-        # lights position
-        glLightfv(GL_LIGHT0, GL_POSITION, self.light_position)
-        glLightfv(GL_LIGHT1, GL_POSITION, (-20.0, -20.0, 20.0))
+            glColor(1.0, 1.0, 1.0)
 
-        glColor(1.0, 1.0, 1.0)
+            # Begin VBO stuff
 
-        # Begin VBO stuff
+            self.vertex_buffer.bind()
+            glVertexPointer(3, GL_FLOAT, 0, None)
+            self.normal_buffer.bind()
+            glNormalPointer(GL_FLOAT, 0, None)
 
-        self.vertex_buffer.bind()
-        glVertexPointer(3, GL_FLOAT, 0, None)
-        self.normal_buffer.bind()
-        glNormalPointer(GL_FLOAT, 0, None)
+            glEnableClientState(GL_VERTEX_ARRAY)
+            glEnableClientState(GL_NORMAL_ARRAY)
 
-        glEnableClientState(GL_VERTEX_ARRAY)
-        glEnableClientState(GL_NORMAL_ARRAY)
+            glDrawArrays(GL_TRIANGLES, 0, len(self.vertices))
 
-        glDrawArrays(GL_TRIANGLES, 0, len(self.vertices))
+            glDisableClientState(GL_NORMAL_ARRAY)
+            glDisableClientState(GL_VERTEX_ARRAY)
+            self.normal_buffer.unbind()
+            self.vertex_buffer.unbind()
 
-        glDisableClientState(GL_NORMAL_ARRAY)
-        glDisableClientState(GL_VERTEX_ARRAY)
-        self.normal_buffer.unbind()
-        self.vertex_buffer.unbind()
+            # End VBO stuff
 
-        # End VBO stuff
-
-        glDisable(GL_LIGHT1)
-        glDisable(GL_LIGHT0)
-
-        glPopMatrix()
+            glDisable(GL_LIGHT1)
+            glDisable(GL_LIGHT0)
+        finally:
+            glPopMatrix()
 
     def display(self, *args, **kwargs):
         glEnable(GL_LIGHTING)

@@ -45,35 +45,35 @@ class Platform(object):
 
     def draw(self):
         glPushMatrix()
+        try:
+            glTranslate(-self.width / 2, -self.depth / 2, 0)
 
-        glTranslate(-self.width / 2, -self.depth / 2, 0)
+            def color(i):
+                if i % self.graduations_major == 0:
+                    glColor(*self.color_grads_major)
+                elif i % (self.graduations_major / 2) == 0:
+                    glColor(*self.color_grads_interm)
+                else:
+                    glColor(*self.color_grads_minor)
 
-        def color(i):
-            if i % self.graduations_major == 0:
-                glColor(*self.color_grads_major)
-            elif i % (self.graduations_major / 2) == 0:
-                glColor(*self.color_grads_interm)
-            else:
-                glColor(*self.color_grads_minor)
+            # draw the grid
+            glBegin(GL_LINES)
+            for i in range(0, int(self.width) + 1):
+                color(i)
+                glVertex3f(float(i), 0.0, 0.0)
+                glVertex3f(float(i), self.depth, 0.0)
 
-        # draw the grid
-        glBegin(GL_LINES)
-        for i in range(0, int(self.width) + 1):
-            color(i)
-            glVertex3f(float(i), 0.0, 0.0)
-            glVertex3f(float(i), self.depth, 0.0)
+            for i in range(0, int(self.depth) + 1):
+                color(i)
+                glVertex3f(0, float(i), 0.0)
+                glVertex3f(self.width, float(i), 0.0)
+            glEnd()
 
-        for i in range(0, int(self.depth) + 1):
-            color(i)
-            glVertex3f(0, float(i), 0.0)
-            glVertex3f(self.width, float(i), 0.0)
-        glEnd()
-
-        # draw fill
-        glColor(*self.color_fill)
-        glRectf(0.0, 0.0, self.width, self.depth)
-
-        glPopMatrix()
+            # draw fill
+            glColor(*self.color_fill)
+            glRectf(0.0, 0.0, self.width, self.depth)
+        finally:
+            glPopMatrix()
 
     def display(self, *args, **kwargs):
         glCallList(self.display_list)

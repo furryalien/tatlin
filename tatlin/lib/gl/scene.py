@@ -96,6 +96,17 @@ class Scene(BaseScene):
             logging.info("Scene.display called with size: (%s, %s)", w, h)
         except Exception:
             pass
+        
+        # Safety: Reset matrix stacks if they're corrupted
+        # This can happen if a previous frame had an exception
+        try:
+            glMatrixMode(GL_PROJECTION)
+            glLoadIdentity()
+            glMatrixMode(GL_MODELVIEW)
+            glLoadIdentity()
+        except Exception as e:
+            logging.error("Error resetting matrices: %s", e)
+        
         # clear the color and depth buffers from any leftover junk
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)  # type:ignore
 
@@ -108,90 +119,95 @@ class Scene(BaseScene):
 
         glutInit()
 
+        # Use try-finally to ensure matrices are properly popped even if exceptions occur
         self.view_ortho.begin(w, h)
-        self.draw_axes()
-        self.view_ortho.end()
+        try:
+            self.draw_axes()
+        finally:
+            self.view_ortho.end()
 
         self.current_view.begin(w, h)
-        self.current_view.display_transform()
+        try:
+            self.current_view.display_transform()
 
-        if self.mode_ortho:
-            for actor in self.actors:
-                actor.display(
-                    elevation=-self.current_view.elevation,
-                    mode_ortho=self.mode_ortho,
-                    mode_2d=self.mode_2d,
-                )
-        else:
-            # actors may use eye height to perform rendering optimizations; in
-            # the simplest terms, in the most convenient definitions, eye
-            # height in the perspective projection divides the screen into two
-            # horizontal halves - one seen from above, the other from below
-            y = self.current_view.y / self.current_view.zoom_factor
-            z = self.current_view.z
-            angle = -math.degrees(math.atan2(z, y)) - self.current_view.elevation
-            eye_height = math.sqrt(y**2 + z**2) * math.sin(math.radians(angle))
+            if self.mode_ortho:
+                for actor in self.actors:
+                    actor.display(
+                        elevation=-self.current_view.elevation,
+                        mode_ortho=self.mode_ortho,
+                        mode_2d=self.mode_2d,
+                    )
+            else:
+                # actors may use eye height to perform rendering optimizations; in
+                # the simplest terms, in the most convenient definitions, eye
+                # height in the perspective projection divides the screen into two
+                # horizontal halves - one seen from above, the other from below
+                y = self.current_view.y / self.current_view.zoom_factor
+                z = self.current_view.z
+                angle = -math.degrees(math.atan2(z, y)) - self.current_view.elevation
+                eye_height = math.sqrt(y**2 + z**2) * math.sin(math.radians(angle))
 
-            # draw line of sight plane
-            """
-            #plane_size = 200
-            #glBegin(GL_LINES)
-            #glColor(1.0, 0.0, 0.0)
-            #glVertex(-plane_size/2, plane_size/2, eye_height)
-            #glVertex(plane_size/2, plane_size/2, eye_height)
+                # draw line of sight plane
+                """
+                #plane_size = 200
+                #glBegin(GL_LINES)
+                #glColor(1.0, 0.0, 0.0)
+                #glVertex(-plane_size/2, plane_size/2, eye_height)
+                #glVertex(plane_size/2, plane_size/2, eye_height)
 
-            #glVertex(plane_size/2, plane_size/2, eye_height)
-            #glVertex(plane_size/2, -plane_size/2, eye_height)
+                #glVertex(plane_size/2, plane_size/2, eye_height)
+                #glVertex(plane_size/2, -plane_size/2, eye_height)
 
-            #glVertex(plane_size/2, -plane_size/2, eye_height)
-            #glVertex(-plane_size/2, -plane_size/2, eye_height)
+                #glVertex(plane_size/2, -plane_size/2, eye_height)
+                #glVertex(-plane_size/2, -plane_size/2, eye_height)
 
-            #glVertex(-plane_size/2, -plane_size/2, eye_height)
-            #glVertex(-plane_size/2, plane_size/2, eye_height)
-            #glEnd()
-            """
+                #glVertex(-plane_size/2, -plane_size/2, eye_height)
+                #glVertex(-plane_size/2, plane_size/2, eye_height)
+                #glEnd()
+                """
 
-            for actor in self.actors:
-                actor.display(
-                    eye_height=eye_height,
-                    mode_ortho=self.mode_ortho,
-                    mode_2d=self.mode_2d,
-                )
-
-        self.current_view.end()
+                for actor in self.actors:
+                    actor.display(
+                        eye_height=eye_height,
+                        mode_ortho=self.mode_ortho,
+                        mode_2d=self.mode_2d,
+                    )
+        finally:
+            self.current_view.end()
 
     def reshape(self, w, h):
         glViewport(0, 0, w, h)
 
     def draw_axes(self, length=50.0):
         glPushMatrix()
-        self.current_view.ui_transform(length)
+        try:
+            self.current_view.ui_transform(length)
 
-        axes = [
-            (-length, 0.0, 0.0),
-            (0.0, -length, 0.0),
-            (0.0, 0.0, length),
-        ]
-        colors = [(1.0, 0.0, 0.0), (0.0, 1.0, 0.0), html_color("008aff")]
-        labels = ["x", "y", "z"]
+            axes = [
+                (-length, 0.0, 0.0),
+                (0.0, -length, 0.0),
+                (0.0, 0.0, length),
+            ]
+            colors = [(1.0, 0.0, 0.0), (0.0, 1.0, 0.0), html_color("008aff")]
+            labels = ["x", "y", "z"]
 
-        glBegin(GL_LINES)
+            glBegin(GL_LINES)
 
-        for axis, color in zip(axes, colors):
-            glColor(*color)
-            glVertex(0.0, 0.0, 0.0)
-            glVertex(*axis)
+            for axis, color in zip(axes, colors):
+                glColor(*color)
+                glVertex(0.0, 0.0, 0.0)
+                glVertex(*axis)
 
-        glEnd()
+            glEnd()
 
-        # draw axis labels
-        for label, axis, color in zip(labels, axes, colors):
-            glColor(*color)
-            # add padding to labels
-            glRasterPos(axis[0] + 2, axis[1] + 2, axis[2] + 2)
-            glutBitmapCharacter(GLUT_BITMAP_8_BY_13, ord(label))  # type:ignore
-
-        glPopMatrix()
+            # draw axis labels
+            for label, axis, color in zip(labels, axes, colors):
+                glColor(*color)
+                # add padding to labels
+                glRasterPos(axis[0] + 2, axis[1] + 2, axis[2] + 2)
+                glutBitmapCharacter(GLUT_BITMAP_8_BY_13, ord(label))  # type:ignore
+        finally:
+            glPopMatrix()
 
     # ------------------------------------------------------------------------
     # VIEWING MANIPULATIONS

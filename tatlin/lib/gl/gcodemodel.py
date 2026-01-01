@@ -187,25 +187,26 @@ class GcodeModel(Model):
 
     def display(self, elevation=0, eye_height=0, mode_ortho=False, mode_2d=False):
         glPushMatrix()
+        try:
+            offset_z = self.offset_z if not mode_2d else 0
+            glTranslate(self.offset_x, self.offset_y, offset_z)
 
-        offset_z = self.offset_z if not mode_2d else 0
-        glTranslate(self.offset_x, self.offset_y, offset_z)
+            glEnableClientState(GL_VERTEX_ARRAY)
+            glEnableClientState(GL_COLOR_ARRAY)
 
-        glEnableClientState(GL_VERTEX_ARRAY)
-        glEnableClientState(GL_COLOR_ARRAY)
+            self._display_movements(elevation, eye_height, mode_ortho, mode_2d)
 
-        self._display_movements(elevation, eye_height, mode_ortho, mode_2d)
+            if self.arrows_enabled:
+                self._display_arrows()
 
-        if self.arrows_enabled:
-            self._display_arrows()
+            glDisableClientState(GL_COLOR_ARRAY)
 
-        glDisableClientState(GL_COLOR_ARRAY)
+            if self.arrows_enabled:
+                self._display_layer_markers()
 
-        if self.arrows_enabled:
-            self._display_layer_markers()
-
-        glDisableClientState(GL_VERTEX_ARRAY)
-        glPopMatrix()
+            glDisableClientState(GL_VERTEX_ARRAY)
+        finally:
+            glPopMatrix()
 
     def _display_movements(
         self, elevation=0, eye_height=0, mode_ortho=False, mode_2d=False
