@@ -66,6 +66,7 @@ class GcodePanel(Panel):
         label_layers = wx.StaticText(self, label="Layers")
         self.slider_layers = wx.Slider(self, style=wx.SL_HORIZONTAL | wx.SL_LABELS)
         self.check_arrows = wx.CheckBox(self, label="Show arrows")
+        self.check_travels = wx.CheckBox(self, label="Show travels")
         self.check_3d = wx.CheckBox(self, label="3D view")
         view_buttons = ViewButtons(self, scene)
         self.check_ortho = wx.CheckBox(self, label="Orthographic projection")
@@ -90,6 +91,7 @@ class GcodePanel(Panel):
         box_display.Add(label_layers, 0, wx.ALIGN_LEFT)
         box_display.Add(self.slider_layers, 0, wx.EXPAND | wx.TOP, border=5)
         box_display.Add(self.check_arrows, 0, wx.EXPAND | wx.TOP, border=5)
+        box_display.Add(self.check_travels, 0, wx.EXPAND | wx.TOP, border=5)
         box_display.Add(self.check_3d, 0, wx.EXPAND | wx.TOP, border=5)
         box_display.Add(view_buttons, 0, wx.ALIGN_CENTER | wx.TOP, border=5)
         box_display.Add(self.check_ortho, 0, wx.EXPAND | wx.TOP, border=5)
@@ -125,6 +127,7 @@ class GcodePanel(Panel):
 
         self.slider_layers.Bind(wx.EVT_SCROLL, self.on_slider_moved)
         self.check_arrows.Bind(wx.EVT_CHECKBOX, self.on_arrows_toggled)
+        self.check_travels.Bind(wx.EVT_CHECKBOX, self.on_travels_toggled)
         self.btn_reset_view.Bind(wx.EVT_BUTTON, self.on_reset_clicked)
         self.btn_center_view.Bind(wx.EVT_BUTTON, self.on_center_clicked)
         self.btn_zoom_in.Bind(wx.EVT_BUTTON, self.on_zoom_in)
@@ -143,6 +146,13 @@ class GcodePanel(Panel):
         Show/hide arrows on the Gcode model.
         """
         self.scene.show_arrows(event.GetEventObject().GetValue())
+        self.scene.invalidate()
+
+    def on_travels_toggled(self, event):
+        """
+        Show/hide travel movements (non-cutting moves) on the Gcode model.
+        """
+        self.scene.show_travels(event.GetEventObject().GetValue())
         self.scene.invalidate()
 
     def on_reset_clicked(self, event):
@@ -341,6 +351,7 @@ class GcodePanel(Panel):
             self.slider_layers.Hide()
 
         self.check_arrows.SetValue(True)  # check the box
+        self.check_travels.SetValue(True)  # check the box
         self.check_3d.SetValue(True)
 
         self.label_width_value.SetLabel(format_float(width))

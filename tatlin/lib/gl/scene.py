@@ -400,6 +400,13 @@ class Scene(BaseScene):
         self.model.arrows_enabled = show
         self.model.init()
 
+    def show_travels(self, show):
+        """
+        Show or hide non-cutting travel movements in the Gcode model.
+        """
+        self.model.travels_enabled = show
+        self.model.update_colors()
+
     @property
     def model_modified(self):
         """

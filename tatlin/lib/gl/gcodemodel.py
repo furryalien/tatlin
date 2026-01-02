@@ -68,6 +68,9 @@ class GcodeModel(Model):
     def load_data(self, model_data, callback=None):
         t_start = time.time()
 
+        # Initialize properties before they're used
+        self.travels_enabled = True
+        
         vertex_list = []
         color_list = []
         self.layer_stops = [0]
@@ -75,6 +78,9 @@ class GcodeModel(Model):
         arrow_list = []
         layer_markers_list = []
         self.layer_marker_stops = [0]
+        
+        # Store model data to allow regenerating colors
+        self.model_data = model_data
 
         num_layers = len(model_data)
         callback_every = max(1, int(math.floor(num_layers / 100)))
@@ -82,6 +88,10 @@ class GcodeModel(Model):
         # the first movement designates the starting point
         start = prev = model_data[0][0]
         del model_data[0][0]
+        
+        cutting_count = 0
+        travel_count = 0
+        
         for layer_idx, layer in enumerate(model_data):
             first = layer[0]
             for movement in layer:
@@ -94,6 +104,16 @@ class GcodeModel(Model):
                 vertex_color = self.movement_color(movement)
                 color_list.append(vertex_color)
                 prev = movement
+                
+                # Count movement types for debugging
+                extruder_on = movement.flags & Movement.FLAG_EXTRUDER_ON or movement.delta_e > 0
+                z_position = movement.v[2]
+                at_work_height = abs(z_position) < 0.01
+                is_cutting = extruder_on or at_work_height
+                if is_cutting:
+                    cutting_count += 1
+                else:
+                    travel_count += 1
 
             self.layer_stops.append(len(vertex_list))
             self.layer_heights.append(first.v[2])
@@ -140,30 +160,92 @@ class GcodeModel(Model):
 
         logging.info("Initialized Gcode model in %.2f seconds" % (t_end - t_start))
         logging.info("Vertex count: %d" % self.vertex_count)
+        logging.info(f"Movement types: {cutting_count} cutting moves, {travel_count} travel moves")
 
     def movement_color(self, move):
         """
         Return the color to use for particular type of movement.
         """
-        # default movement color is gray
-        color = (0.6, 0.6, 0.6, 0.6)
-
         extruder_on = move.flags & Movement.FLAG_EXTRUDER_ON or move.delta_e > 0
+        
+        # For gcode files without extruder data (CNC, pen plotters, etc.),
+        # assume movements at Z=0 (or very close) are cutting/drawing,
+        # and movements at higher Z are travels
+        z_position = move.v[2] if hasattr(move, 'v') else 0
+        at_work_height = abs(z_position) < 0.01  # within 0.01mm of Z=0
+        
+        # A movement is "cutting" if extruder is on OR at work height
+        is_cutting = extruder_on or at_work_height
+        
         outer_perimeter = (
             move.flags & Movement.FLAG_PERIMETER
             and move.flags & Movement.FLAG_PERIMETER_OUTER
         )
 
-        if extruder_on and outer_perimeter:
+        if is_cutting and outer_perimeter:
             color = (0.0, 0.875, 0.875, 0.6)  # cyan
-        elif extruder_on and move.flags & Movement.FLAG_PERIMETER:
+        elif is_cutting and move.flags & Movement.FLAG_PERIMETER:
             color = (0.0, 1.0, 0.0, 0.6)  # green
-        elif extruder_on and move.flags & Movement.FLAG_LOOP:
+        elif is_cutting and move.flags & Movement.FLAG_LOOP:
             color = (1.0, 0.875, 0.0, 0.6)  # yellow
-        elif extruder_on:
+        elif is_cutting:
             color = (1.0, 0.0, 0.0, 0.6)  # red
+        else:
+            # Non-cutting travel move (higher Z position)
+            if self.travels_enabled:
+                color = (0.6, 0.6, 0.6, 0.6)  # gray - visible
+            else:
+                color = (0.0, 0.0, 0.0, 0.0)  # transparent - hidden
 
         return color
+
+    def update_colors(self):
+        """
+        Regenerate colors for all movements based on current settings.
+        This is called when travels_enabled is toggled.
+        """
+        if not hasattr(self, 'model_data') or self.model_data is None or len(self.model_data) == 0:
+            return
+        
+        color_list = []
+        cutting_count = 0
+        travel_count = 0
+        
+        # Iterate through model_data the same way as in load_data
+        # Note: the first element of the first layer was already removed in load_data
+        for layer_idx, layer in enumerate(self.model_data):
+            for movement in layer:
+                vertex_color = self.movement_color(movement)
+                color_list.append(vertex_color)
+                
+                # Count movement types for debugging
+                extruder_on = movement.flags & Movement.FLAG_EXTRUDER_ON or movement.delta_e > 0
+                z_position = movement.v[2]
+                at_work_height = abs(z_position) < 0.01
+                is_cutting = extruder_on or at_work_height
+                if is_cutting:
+                    cutting_count += 1
+                else:
+                    travel_count += 1
+        
+        logging.info(f"Regenerated colors: {cutting_count} cutting moves, {travel_count} travel moves, travels_enabled={self.travels_enabled}")
+        
+        self.colors = numpy.array(color_list, "f")
+        
+        # Verify we have the right number of colors
+        total_movements = sum(len(layer) for layer in self.model_data)
+        if len(self.colors) != total_movements:
+            logging.error(f"Color count mismatch! colors={len(self.colors)}, movements={total_movements}")
+        
+        # Update the VBO if already initialized
+        if self.initialized:
+            self.vertex_color_buffer = VBO(
+                self.colors.repeat(2, 0), "GL_STATIC_DRAW"
+            )
+            if self.arrows_enabled:
+                self.arrow_color_buffer = VBO(
+                    self.colors.repeat(3, 0), "GL_STATIC_DRAW"
+                )
 
     # ------------------------------------------------------------------------
     # DRAWING
