@@ -20,6 +20,7 @@ import sys
 import os
 import os.path
 import logging
+import argparse
 from typing import Any
 
 from tatlin.conf.rendering import configure_backend
@@ -60,7 +61,7 @@ from tatlin.conf.config import Config
 
 class App(BaseApp):
 
-    def __init__(self):
+    def __init__(self, file_to_open=None):
         super(App, self).__init__()
 
         self.window = MainWindow(self)
@@ -80,6 +81,9 @@ class App(BaseApp):
         window_h = self.config.read("ui.window_h", int)
         self.window.set_size((window_w, window_h))
         self.init_scene()
+        
+        # Store file to open after window is shown
+        self.file_to_open = file_to_open
 
     def init_config(self):
         fname = os.path.expanduser(os.path.join("~", ".tatlin"))
@@ -92,6 +96,13 @@ class App(BaseApp):
 
     def show_window(self):
         self.window.show_all()
+        
+    def run(self):
+        """Start the application event loop."""
+        # Open file after window is shown (if provided via command line)
+        if self.file_to_open:
+            wx.CallAfter(self.open_and_display_file, os.path.abspath(self.file_to_open))
+        super(App, self).run()
 
     @property
     def current_dir(self):
@@ -105,10 +116,6 @@ class App(BaseApp):
         else:
             dur = os.getcwd()
         return dur
-
-    def command_line(self):
-        if len(sys.argv) > 1:
-            self.open_and_display_file(os.path.abspath(sys.argv[1]))
 
     # -------------------------------------------------------------------------
     # EVENT HANDLERS
@@ -297,9 +304,28 @@ class App(BaseApp):
 
 
 def run():
+    parser = argparse.ArgumentParser(
+        description='Tatlin - STL and GCode viewer',
+        formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    parser.add_argument(
+        'file',
+        nargs='?',
+        help='GCode or STL file to open'
+    )
+    parser.add_argument(
+        '-v', '--verbose',
+        action='store_true',
+        help='Enable verbose logging output'
+    )
+    args = parser.parse_args()
+    
+    # Set logging level based on verbose flag
+    log_level = logging.DEBUG if args.verbose else logging.WARNING
+    
     logging.basicConfig(
         format="--- [%(levelname)s] %(message)s",
-        level=logging.DEBUG,
+        level=log_level,
         # From the docs: "This function does nothing if the root logger already
         # has handlers configured, unless the keyword argument force is set to
         # True." This has the unfortunate side effect that if any of the
@@ -308,9 +334,8 @@ def run():
         force=True,
     )
 
-    app = App()
+    app = App(args.file)
     app.show_window()
-    app.command_line()
     app.run()
 
 

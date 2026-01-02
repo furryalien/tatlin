@@ -41,6 +41,11 @@ You can provide an optional filename to load:
 
     $ python tatlin.py filename.stl
 
+For verbose logging output (useful for debugging):
+
+    $ python tatlin.py -v filename.stl
+    $ python tatlin.py --verbose filename.stl
+
 Mouse navigation
 
 - Left mouse button to rotate
