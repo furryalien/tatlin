@@ -50,6 +50,7 @@ class Scene(BaseScene):
         self.actors = []
         self.cursor_x = 0
         self.cursor_y = 0
+        self.grid_visible = True
 
         self.view_ortho = View2D()
         self.view_perspective = View3D()
@@ -122,7 +123,8 @@ class Scene(BaseScene):
         # Use try-finally to ensure matrices are properly popped even if exceptions occur
         self.view_ortho.begin(w, h)
         try:
-            self.draw_axes()
+            if self.grid_visible:
+                self.draw_axes()
         finally:
             self.view_ortho.end()
 
@@ -131,7 +133,8 @@ class Scene(BaseScene):
             self.current_view.display_transform()
 
             if self.mode_ortho:
-                for actor in self.actors:
+                actors_to_draw = self._filter_actors()
+                for actor in actors_to_draw:
                     actor.display(
                         elevation=-self.current_view.elevation,
                         mode_ortho=self.mode_ortho,
@@ -166,7 +169,8 @@ class Scene(BaseScene):
                 #glEnd()
                 """
 
-                for actor in self.actors:
+                actors_to_draw = self._filter_actors()
+                for actor in actors_to_draw:
                     actor.display(
                         eye_height=eye_height,
                         mode_ortho=self.mode_ortho,
@@ -177,6 +181,15 @@ class Scene(BaseScene):
 
     def reshape(self, w, h):
         glViewport(0, 0, w, h)
+
+    def _filter_actors(self):
+        """Filter actors based on visibility settings."""
+        if self.grid_visible:
+            return self.actors
+        else:
+            # Hide platform when grid is not visible
+            from .platform import Platform
+            return [actor for actor in self.actors if not isinstance(actor, Platform)]
 
     def draw_axes(self, length=50.0):
         glPushMatrix()
@@ -406,6 +419,12 @@ class Scene(BaseScene):
         """
         self.model.travels_enabled = show
         self.model.update_colors()
+
+    def show_grid(self, show):
+        """
+        Show or hide the background grid and axes.
+        """
+        self.grid_visible = show
 
     @property
     def model_modified(self):
