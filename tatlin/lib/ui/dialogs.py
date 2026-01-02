@@ -124,20 +124,54 @@ class ProgressDialog(wx.ProgressDialog):
         super(ProgressDialog, self).__init__("Loading", "", 100)
 
         self.value = -1
+        self._destroyed = False
+
+    def _is_valid(self):
+        """Check if the dialog is still valid and can be accessed."""
+        try:
+            return not self._destroyed and self and not self.IsBeingDeleted()
+        except:
+            return False
 
     def stage(self, message):
-        self.Show()
-        self.Update(0, message)
+        if self._is_valid():
+            try:
+                self.Show()
+                self.Update(0, message)
+            except:
+                pass  # Ignore errors if window is being destroyed
 
     def step(self, count, limit):
-        self.value = max(-1, min(int(count / limit * 100), 100))
-        self.Update(self.value)
+        if self._is_valid():
+            try:
+                self.value = max(-1, min(int(count / limit * 100), 100))
+                self.Update(self.value)
+            except:
+                pass  # Ignore errors if window is being destroyed
 
     def hide(self):
-        self.Hide()
+        if self._is_valid():
+            try:
+                self.Hide()
+            except:
+                pass  # Ignore errors if window is being destroyed
 
     def destroy(self):
-        self.Destroy()
+        if not self._destroyed:
+            self._destroyed = True
+            # Use wx.CallAfter to ensure proper destruction timing
+            try:
+                wx.CallAfter(self._safe_destroy)
+            except:
+                pass  # Ignore if event loop is shutting down
+    
+    def _safe_destroy(self):
+        """Safely destroy the dialog, catching any errors."""
+        try:
+            if self and not self.IsBeingDeleted():
+                self.Destroy()
+        except:
+            pass  # Ignore any errors during destruction
 
 
 class AboutDialog(object):

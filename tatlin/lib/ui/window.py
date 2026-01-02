@@ -26,6 +26,9 @@ class MainWindow(wx.Frame):
         self.app = app
 
         super(MainWindow, self).__init__(None, title=self._app_name)
+        
+        # Hide window during construction to prevent GTK allocation errors
+        self.Hide()
 
         self._file_modified = False
         self._filename = None
@@ -88,6 +91,9 @@ class MainWindow(wx.Frame):
         self.SetMenuBar(self.menubar)
         self.statusbar = self.CreateStatusBar()
         self.SetSizer(self.box_main)
+        
+        # Set minimum size on box_scene to prevent panel shrinking
+        self.box_scene.SetMinSize((300, 600))
 
         # Set minimum frame size so that the widgets contained within are not squashed.
         # I wish there was a reliable way to set the minimum size based on minimum
@@ -95,12 +101,28 @@ class MainWindow(wx.Frame):
         # of window decorations (borders and titlebar) in addition to other minor quirks.
         # Hardcoding the minimum size seems no less portable and reliable, and also
         # much easier.
-        self.SetSizeHints(400, 700, self.GetMaxWidth(), self.GetMaxHeight())
+        # Increased minimum width to 520 to prevent GTK widget sizing issues
+        self.SetSizeHints(520, 700, self.GetMaxWidth(), self.GetMaxHeight())
         self.Center()
 
         self.Bind(wx.EVT_CLOSE, app.on_quit)
         self.Bind(wx.EVT_ICONIZE, self.on_iconize)
+        self.Bind(wx.EVT_SIZE, self.on_size)
 
+    def on_size(self, event):
+        """Enforce minimum window size during resize to prevent GTK allocation errors."""
+        size = self.GetSize()
+        min_width = 520
+        min_height = 700
+        
+        if size.width < min_width or size.height < min_height:
+            # Force window to minimum size if it's too small
+            new_width = max(size.width, min_width)
+            new_height = max(size.height, min_height)
+            self.SetSize(new_width, new_height)
+        
+        event.Skip()
+    
     def set_icon(self, icon):
         self.SetIcon(icon)
 
@@ -108,7 +130,12 @@ class MainWindow(wx.Frame):
         self.Destroy()
 
     def show_all(self):
-        self.Show()
+        # Ensure layout is finalized before showing to prevent GTK sizing errors
+        self.Fit()
+        self.Layout()
+        self.Refresh()
+        # Use wx.CallAfter to ensure all pending events are processed
+        wx.CallAfter(self.Show)
 
     def get_size(self):
         return self.GetSize()
@@ -117,16 +144,52 @@ class MainWindow(wx.Frame):
         self.SetSize(size)
 
     def set_file_widgets(self, scene, panel):
-        # remove startup panel if present
-        if self._filename is None:
-            self.panel_startup.Destroy()
-            self.box_main.Add(self.box_scene, 1, wx.EXPAND)
-        # remove previous scene and panel, if any, destroying the widgets
-        self.box_scene.Clear(True)
-        self.box_scene.Add(scene, 1, wx.EXPAND)
-        self.box_scene.Add(panel, 0, wx.EXPAND)
-        self.box_scene.ShowItems(True)
-        self.Layout()  # without this call, wxPython does not draw the new widgets until window resize
+        # Freeze window to prevent GTK from rendering during widget changes
+        self.Freeze()
+        
+        try:
+            # remove startup panel if present
+            if self._filename is None:
+                if hasattr(self, 'panel_startup') and self.panel_startup:
+                    try:
+                        self.panel_startup.Destroy()
+                    except:
+                        pass  # Ignore errors if already destroyed
+                self.box_main.Add(self.box_scene, 1, wx.EXPAND)
+            # remove previous scene and panel, if any, destroying the widgets
+            # Use wx.CallAfter to ensure proper cleanup and avoid accessing destroyed windows
+            if self.box_scene.GetChildren():
+                try:
+                    self.box_scene.Clear(True)
+                except:
+                    pass  # Ignore errors during cleanup
+            
+            # Ensure panel has proper size before adding to sizer
+            panel.Fit()
+            panel.Layout()
+            
+            # Ensure panel meets minimum width
+            panel_size = panel.GetSize()
+            if panel_size.width < 260:
+                panel.SetSize(260, panel_size.height)
+            
+            self.box_scene.Add(scene, 1, wx.EXPAND)
+            self.box_scene.Add(panel, 0, wx.EXPAND | wx.FIXED_MINSIZE)
+            self.box_scene.ShowItems(True)
+        finally:
+            # Always unfreeze, even if there's an error
+            self.Thaw()
+        
+        # Use wx.CallAfter to ensure layout happens after widget destruction is complete
+        wx.CallAfter(self._safe_layout)
+    
+    def _safe_layout(self):
+        """Safely perform layout, catching any errors from destroyed widgets."""
+        try:
+            if self and not self.IsBeingDeleted():
+                self.Layout()
+        except:
+            pass  # Ignore any errors during layout of potentially destroyed widgets
 
     def menu_enable_file_items(self, enable=True):
         for item in self.menu_items_file:

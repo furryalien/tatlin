@@ -20,31 +20,55 @@ import wx
 
 class ViewButtons(wx.FlexGridSizer):
     def __init__(self, parent, scene):
-        super(ViewButtons, self).__init__(rows=3, cols=3, vgap=0, hgap=0)
+        super(ViewButtons, self).__init__(rows=3, cols=3, vgap=3, hgap=3)
 
         self.scene = scene
+        
+        # Set minimum size for all buttons immediately upon creation
+        min_button_size = (65, 32)
 
-        self.btn_front = wx.Button(parent, label="Front")
-        self.btn_back = wx.Button(parent, label="Back")
-        self.btn_left = wx.Button(parent, label="Left")
-        self.btn_right = wx.Button(parent, label="Right")
+        self.btn_front = wx.Button(parent, label="Front", size=min_button_size)
+        self.btn_front.SetMinSize(min_button_size)
+        self.btn_front.SetInitialSize(min_button_size)
+        
+        self.btn_back = wx.Button(parent, label="Back", size=min_button_size)
+        self.btn_back.SetMinSize(min_button_size)
+        self.btn_back.SetInitialSize(min_button_size)
+        
+        self.btn_left = wx.Button(parent, label="Left", size=min_button_size)
+        self.btn_left.SetMinSize(min_button_size)
+        self.btn_left.SetInitialSize(min_button_size)
+        
+        self.btn_right = wx.Button(parent, label="Right", size=min_button_size)
+        self.btn_right.SetMinSize(min_button_size)
+        self.btn_right.SetInitialSize(min_button_size)
 
-        self.btn_top = wx.Button(parent, label="Top")
-        self.btn_bottom = wx.Button(parent, label="Bottom")
+        self.btn_top = wx.Button(parent, label="Top", size=min_button_size)
+        self.btn_top.SetMinSize(min_button_size)
+        self.btn_top.SetInitialSize(min_button_size)
+        
+        self.btn_bottom = wx.Button(parent, label="Bottom", size=min_button_size)
+        self.btn_bottom.SetMinSize(min_button_size)
+        self.btn_bottom.SetInitialSize(min_button_size)
 
         vbox = wx.BoxSizer(wx.VERTICAL)
-        vbox.Add(self.btn_top, 0, wx.EXPAND)
-        vbox.Add(self.btn_bottom, 0, wx.EXPAND)
-
-        self.Add((0, 0), 0, wx.EXPAND)
-        self.Add(self.btn_back, 0, wx.EXPAND)
-        self.Add((0, 0), 0, wx.EXPAND)
-        self.Add(self.btn_left, 0, wx.EXPAND)
-        self.Add(vbox, 0, wx.EXPAND)
-        self.Add(self.btn_right, 0, wx.EXPAND)
-        self.Add((0, 0), 0, wx.EXPAND)
-        self.Add(self.btn_front, 0, wx.EXPAND)
-        self.Add((0, 0), 0, wx.EXPAND)
+        vbox.Add(self.btn_top, 0, wx.FIXED_MINSIZE)
+        vbox.Add(self.btn_bottom, 0, wx.FIXED_MINSIZE)
+        
+        # Use minimum size spacers instead of (0,0) to prevent GTK negative allocation
+        min_spacer = (15, 15)
+        self.Add(min_spacer, 0, wx.RESERVE_SPACE_EVEN_IF_HIDDEN)
+        self.Add(self.btn_back, 0, wx.FIXED_MINSIZE)
+        self.Add(min_spacer, 0, wx.RESERVE_SPACE_EVEN_IF_HIDDEN)
+        self.Add(self.btn_left, 0, wx.FIXED_MINSIZE)
+        self.Add(vbox, 0, wx.FIXED_MINSIZE)
+        self.Add(self.btn_right, 0, wx.FIXED_MINSIZE)
+        self.Add(min_spacer, 0, wx.RESERVE_SPACE_EVEN_IF_HIDDEN)
+        self.Add(self.btn_front, 0, wx.FIXED_MINSIZE)
+        self.Add(min_spacer, 0, wx.RESERVE_SPACE_EVEN_IF_HIDDEN)
+        
+        # Set minimum size on the sizer itself to prevent GTK negative allocation
+        self.SetMinSize((200, 100))
 
         # connect handlers
         self.btn_front.Bind(wx.EVT_BUTTON, self.on_view_front)

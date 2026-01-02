@@ -24,6 +24,7 @@ class StartupPanel(wx.Panel):
 
         text = wx.StaticText(self, label="No files loaded")
         self.btn_open = wx.Button(self, wx.ID_OPEN)
+        self.btn_open.SetMinSize((100, 30))  # Prevent GTK allocation errors
 
         box = wx.BoxSizer(wx.VERTICAL)
         box.Add((0, 0), 1, wx.EXPAND)

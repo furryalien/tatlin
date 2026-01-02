@@ -64,6 +64,8 @@ class StlPanel(Panel):
         grid_dimensions.Add(label_factor, 0, wx.ALIGN_CENTER)
         grid_dimensions.Add(self.entry_factor, 0, wx.EXPAND)
         grid_dimensions.AddGrowableCol(1)
+        # Set minimum size to prevent GTK allocation errors
+        grid_dimensions.SetMinSize((180, -1))
 
         sizer_dimensions.Add(grid_dimensions, 0, wx.EXPAND | wx.ALL, border=5)
 
@@ -75,6 +77,7 @@ class StlPanel(Panel):
         sizer_move = wx.StaticBoxSizer(static_box_move, wx.VERTICAL)
 
         self.btn_center = wx.Button(self, label="Center model")
+        self.btn_center.SetMinSize((100, 30))  # Prevent GTK allocation errors
 
         sizer_move.Add(self.btn_center, 0, wx.EXPAND | wx.ALL, border=5)
 
@@ -86,34 +89,39 @@ class StlPanel(Panel):
         sizer_rotate = wx.StaticBoxSizer(static_box_rotate, wx.VERTICAL)
 
         self.btn_x_90 = wx.Button(self, label="+90")
+        self.btn_x_90.SetMinSize((45, 30))  # Prevent GTK allocation errors
         label_rotate_x = wx.StaticText(self, label="X:")
         self.entry_rotate_x = wx.TextCtrl(self, style=wx.TE_PROCESS_ENTER)
         sizer_entry_x = wx.BoxSizer(wx.HORIZONTAL)
         sizer_entry_x.Add(self.entry_rotate_x, 1, wx.ALIGN_CENTER_VERTICAL)
 
         self.btn_y_90 = wx.Button(self, label="+90")
+        self.btn_y_90.SetMinSize((45, 30))  # Prevent GTK allocation errors
         label_rotate_y = wx.StaticText(self, label="Y:")
         self.entry_rotate_y = wx.TextCtrl(self, style=wx.TE_PROCESS_ENTER)
         sizer_entry_y = wx.BoxSizer(wx.HORIZONTAL)
         sizer_entry_y.Add(self.entry_rotate_y, 1, wx.ALIGN_CENTER_VERTICAL)
 
         self.btn_z_90 = wx.Button(self, label="+90")
+        self.btn_z_90.SetMinSize((45, 30))  # Prevent GTK allocation errors
         label_rotate_z = wx.StaticText(self, label="Z:")
         self.entry_rotate_z = wx.TextCtrl(self, style=wx.TE_PROCESS_ENTER)
         sizer_entry_z = wx.BoxSizer(wx.HORIZONTAL)
         sizer_entry_z.Add(self.entry_rotate_z, 1, wx.ALIGN_CENTER_VERTICAL)
 
         grid_rotate = wx.FlexGridSizer(3, 3, 5, 5)
-        grid_rotate.Add(self.btn_x_90, 0)
+        grid_rotate.Add(self.btn_x_90, 0, wx.FIXED_MINSIZE)
         grid_rotate.Add(label_rotate_x, 0, wx.ALIGN_CENTER_VERTICAL)
         grid_rotate.Add(sizer_entry_x, 0, wx.EXPAND)
-        grid_rotate.Add(self.btn_y_90, 0)
+        grid_rotate.Add(self.btn_y_90, 0, wx.FIXED_MINSIZE)
         grid_rotate.Add(label_rotate_y, 0, wx.ALIGN_CENTER_VERTICAL)
         grid_rotate.Add(sizer_entry_y, 0, wx.EXPAND)
-        grid_rotate.Add(self.btn_z_90, 0)
+        grid_rotate.Add(self.btn_z_90, 0, wx.FIXED_MINSIZE)
         grid_rotate.Add(label_rotate_z, 0, wx.ALIGN_CENTER_VERTICAL)
         grid_rotate.Add(sizer_entry_z, 0, wx.EXPAND)
         grid_rotate.AddGrowableCol(2)
+        # Set minimum size to prevent GTK allocation errors
+        grid_rotate.SetMinSize((180, -1))
 
         sizer_rotate.Add(grid_rotate, 0, wx.EXPAND | wx.ALL, border=5)
 
@@ -127,11 +135,15 @@ class StlPanel(Panel):
         view_buttons = ViewButtons(self, scene)
         self.check_ortho = wx.CheckBox(self, label="Orthographic projection")
         self.btn_reset_view = wx.Button(self, label="Reset view")
+        self.btn_reset_view.SetMinSize((100, 30))  # Prevent GTK allocation errors
+        
+        # Set minimum size to prevent GTK warnings about negative size
+        self.check_ortho.SetMinSize((180, 30))
 
         box_display = wx.BoxSizer(wx.VERTICAL)
         box_display.Add(view_buttons, 0, wx.ALIGN_CENTER | wx.TOP, border=5)
-        box_display.Add(self.check_ortho, 0, wx.EXPAND | wx.TOP, border=5)
-        box_display.Add(self.btn_reset_view, 0, wx.EXPAND | wx.TOP, border=5)
+        box_display.Add(self.check_ortho, 0, wx.EXPAND | wx.TOP | wx.FIXED_MINSIZE, border=5)
+        box_display.Add(self.btn_reset_view, 0, wx.EXPAND | wx.TOP | wx.FIXED_MINSIZE, border=5)
 
         sizer_display.Add(box_display, 0, wx.EXPAND | wx.ALL, border=5)
 
@@ -143,6 +155,13 @@ class StlPanel(Panel):
         box.Add(sizer_display, 0, wx.EXPAND | wx.TOP | wx.RIGHT | wx.LEFT, border=5)
 
         self.SetSizer(box)
+        # Set minimum width to prevent GTK allocation warnings
+        self.SetMinSize((260, -1))
+        # Prevent panel from shrinking below minimum size
+        box.SetMinSize((260, -1))
+        # Finalize layout before showing to prevent GTK sizing errors
+        self.SetInitialSize(self.GetMinSize())
+        self.Layout()
 
     def connect_handlers(self):
         if self._handlers_connected:
@@ -202,7 +221,12 @@ class StlPanel(Panel):
             self.scene.invalidate()
             # tell all the widgets that care about model size that it has changed
             self.model_size_changed()
-            self.GetParent().file_modified = self.scene.model_modified
+            try:
+                parent = self.GetParent()
+                if parent and hasattr(parent, 'file_modified'):
+                    parent.file_modified = self.scene.model_modified
+            except:
+                pass  # Ignore if parent is destroyed
         except ValueError:
             pass  # ignore invalid values
 
@@ -211,7 +235,12 @@ class StlPanel(Panel):
             self.scene.change_model_dimension(dimension, float(value))
             self.scene.invalidate()
             self.model_size_changed()
-            self.GetParent().file_modified = self.scene.model_modified
+            try:
+                parent = self.GetParent()
+                if parent and hasattr(parent, 'file_modified'):
+                    parent.file_modified = self.scene.model_modified
+            except:
+                pass  # Ignore if parent is destroyed
         except ValueError:
             pass  # ignore invalid values
 
@@ -221,7 +250,12 @@ class StlPanel(Panel):
             self.scene.model.init()
             self.scene.invalidate()
 
-            self.GetParent().file_modified = self.scene.model_modified
+            try:
+                parent = self.GetParent()
+                if parent and hasattr(parent, 'file_modified'):
+                    parent.file_modified = self.scene.model_modified
+            except:
+                pass  # Ignore if parent is destroyed
         except ValueError:
             pass  # ignore invalid values
 
@@ -303,7 +337,12 @@ class StlPanel(Panel):
     def on_center_clicked(self, event):
         self.scene.center_model()
         self.scene.invalidate()
-        self.GetParent().file_modified = self.scene.model_modified
+        try:
+            parent = self.GetParent()
+            if parent and hasattr(parent, 'file_modified'):
+                parent.file_modified = self.scene.model_modified
+        except:
+            pass  # Ignore if parent is destroyed
 
     def on_reset_clicked(self, event):
         self.scene.reset_view()

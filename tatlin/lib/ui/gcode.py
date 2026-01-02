@@ -53,6 +53,8 @@ class GcodePanel(Panel):
         grid_dimensions.Add(self.label_depth_value, 0, wx.ALIGN_CENTER)
         grid_dimensions.Add(label_height, 0, wx.ALIGN_CENTER)
         grid_dimensions.Add(self.label_height_value, 0, wx.ALIGN_CENTER)
+        # Set minimum size to prevent GTK allocation errors
+        grid_dimensions.SetMinSize((120, -1))
 
         sizer_dimensions.Add(grid_dimensions, 0, wx.EXPAND | wx.ALL, border=5)
 
@@ -71,12 +73,23 @@ class GcodePanel(Panel):
         self.check_3d = wx.CheckBox(self, label="3D view")
         view_buttons = ViewButtons(self, scene)
         self.check_ortho = wx.CheckBox(self, label="Orthographic projection")
+        
+        # Set minimum sizes to prevent GTK warnings about negative size
+        min_checkbox_size = (120, 30)
+        for checkbox in [self.check_arrows, self.check_travels, self.check_grid,
+                         self.check_3d, self.check_ortho]:
+            checkbox.SetMinSize(min_checkbox_size)
+        
         # Zoom controls
         self.btn_zoom_in = wx.Button(self, label="Zoom in")
         self.btn_zoom_out = wx.Button(self, label="Zoom out")
         self.btn_reset_view = wx.Button(self, label="Reset view")
         # Center view
         self.btn_center_view = wx.Button(self, label="Center view")
+        
+        # Set minimum sizes to prevent GTK allocation errors
+        for btn in [self.btn_zoom_in, self.btn_zoom_out, self.btn_reset_view, self.btn_center_view]:
+            btn.SetMinSize((100, 30))
 
         # Tooltips show keyboard shortcuts
         self.btn_zoom_in.SetToolTip("Zoom in (Ctrl+=)")
@@ -85,18 +98,18 @@ class GcodePanel(Panel):
         self.btn_center_view.SetToolTip("Center model in the view")
 
         hzoom = wx.BoxSizer(wx.HORIZONTAL)
-        hzoom.Add(self.btn_zoom_in, 0, wx.RIGHT, border=5)
-        hzoom.Add(self.btn_zoom_out, 0)
+        hzoom.Add(self.btn_zoom_in, 0, wx.RIGHT | wx.FIXED_MINSIZE, border=5)
+        hzoom.Add(self.btn_zoom_out, 0, wx.FIXED_MINSIZE)
 
         box_display = wx.BoxSizer(wx.VERTICAL)
         box_display.Add(label_layers, 0, wx.ALIGN_LEFT)
         box_display.Add(self.slider_layers, 0, wx.EXPAND | wx.TOP, border=5)
-        box_display.Add(self.check_arrows, 0, wx.EXPAND | wx.TOP, border=5)
-        box_display.Add(self.check_travels, 0, wx.EXPAND | wx.TOP, border=5)
-        box_display.Add(self.check_grid, 0, wx.EXPAND | wx.TOP, border=5)
-        box_display.Add(self.check_3d, 0, wx.EXPAND | wx.TOP, border=5)
+        box_display.Add(self.check_arrows, 0, wx.EXPAND | wx.TOP | wx.FIXED_MINSIZE, border=5)
+        box_display.Add(self.check_travels, 0, wx.EXPAND | wx.TOP | wx.FIXED_MINSIZE, border=5)
+        box_display.Add(self.check_grid, 0, wx.EXPAND | wx.TOP | wx.FIXED_MINSIZE, border=5)
+        box_display.Add(self.check_3d, 0, wx.EXPAND | wx.TOP | wx.FIXED_MINSIZE, border=5)
         box_display.Add(view_buttons, 0, wx.ALIGN_CENTER | wx.TOP, border=5)
-        box_display.Add(self.check_ortho, 0, wx.EXPAND | wx.TOP, border=5)
+        box_display.Add(self.check_ortho, 0, wx.EXPAND | wx.TOP | wx.FIXED_MINSIZE, border=5)
         box_display.Add(hzoom, 0, wx.EXPAND | wx.TOP, border=5)
 
         # Small on-screen hint showing keyboard shortcuts
@@ -111,8 +124,8 @@ class GcodePanel(Panel):
         box_display.Add(hint, 0, wx.ALIGN_LEFT | wx.TOP, border=5)
 
         hreset = wx.BoxSizer(wx.HORIZONTAL)
-        hreset.Add(self.btn_reset_view, 0, wx.RIGHT, border=5)
-        hreset.Add(self.btn_center_view, 0)
+        hreset.Add(self.btn_reset_view, 0, wx.RIGHT | wx.FIXED_MINSIZE, border=5)
+        hreset.Add(self.btn_center_view, 0, wx.FIXED_MINSIZE)
         box_display.Add(hreset, 0, wx.EXPAND | wx.TOP, border=5)
 
         sizer_display.Add(box_display, 0, wx.EXPAND | wx.ALL, border=5)
@@ -122,6 +135,13 @@ class GcodePanel(Panel):
         box.Add(sizer_display, 0, wx.EXPAND | wx.TOP | wx.RIGHT | wx.LEFT, border=5)
 
         self.SetSizer(box)
+        # Set minimum width to prevent GTK allocation warnings
+        self.SetMinSize((260, -1))
+        # Prevent panel from shrinking below minimum size
+        box.SetMinSize((260, -1))
+        # Finalize layout before showing to prevent GTK sizing errors
+        self.SetInitialSize(self.GetMinSize())
+        self.Layout()
 
     def connect_handlers(self):
         if self._handlers_connected:
