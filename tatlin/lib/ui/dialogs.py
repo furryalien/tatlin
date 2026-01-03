@@ -159,9 +159,9 @@ class ProgressDialog(wx.ProgressDialog):
     def destroy(self):
         if not self._destroyed:
             self._destroyed = True
-            # Use wx.CallAfter to ensure proper destruction timing
+            # Use wx.CallLater with delay to ensure window is fully done rendering
             try:
-                wx.CallAfter(self._safe_destroy)
+                wx.CallLater(100, self._safe_destroy)
             except:
                 pass  # Ignore if event loop is shutting down
     

@@ -23,6 +23,15 @@ import logging
 import argparse
 from typing import Any
 
+# Suppress GTK warnings that occur during wxPython widget initialization
+# These warnings are cosmetic and don't affect functionality
+import warnings
+warnings.filterwarnings('ignore', category=DeprecationWarning)
+
+# Set GTK log level to suppress cosmetic warnings
+os.environ.setdefault('G_MESSAGES_DEBUG', '')
+os.environ.setdefault('GTK_DEBUG', '0')
+
 from tatlin.conf.rendering import configure_backend
 
 configure_backend()

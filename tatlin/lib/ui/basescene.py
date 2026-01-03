@@ -98,7 +98,9 @@ class BaseScene(glcanvas.GLCanvas):
         pass  # Do nothing, to avoid flashing on MSW. Doesn't seem to be working, though :(
 
     def _on_size(self, event):
-        wx.CallAfter(self._set_viewport)
+        # Use CallAfter to prevent GTK allocation errors during resize
+        if self and not self.IsBeingDeleted():
+            wx.CallAfter(self._set_viewport)
         event.Skip()
 
     def _set_viewport(self):

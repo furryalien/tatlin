@@ -103,6 +103,8 @@ class MainWindow(wx.Frame):
         # much easier.
         # Increased minimum width to 520 to prevent GTK widget sizing issues
         self.SetSizeHints(520, 700, self.GetMaxWidth(), self.GetMaxHeight())
+        # Set initial size immediately to prevent GTK from trying to layout with default size
+        self.SetSize(650, 750)
         self.Center()
 
         self.Bind(wx.EVT_CLOSE, app.on_quit)
@@ -134,8 +136,16 @@ class MainWindow(wx.Frame):
         self.Fit()
         self.Layout()
         self.Refresh()
-        # Use wx.CallAfter to ensure all pending events are processed
-        wx.CallAfter(self.Show)
+        # Use wx.CallLater with delay to ensure all sizing events are processed
+        wx.CallLater(50, self._delayed_show)
+    
+    def _delayed_show(self):
+        """Show window after all layout is complete."""
+        try:
+            if self and not self.IsBeingDeleted():
+                self.Show()
+        except:
+            pass
 
     def get_size(self):
         return self.GetSize()
