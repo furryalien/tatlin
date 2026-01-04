@@ -259,7 +259,16 @@ class View3D(ViewMode):
         glLightfv(GL_LIGHT1, GL_POSITION, (-20.0, -20.0, 20.0))
 
         glColor(1.0, 0.0, 0.0)
-        glutSolidSphere(0.8, 100, 100)
+        # Use GLU quadric instead of GLUT (which may not be available on Windows)
+        try:
+            quadric = gluNewQuadric()
+            gluQuadricDrawStyle(quadric, GLU_FILL)
+            gluQuadricNormals(quadric, GLU_SMOOTH)
+            gluSphere(quadric, 0.8, 32, 32)
+            gluDeleteQuadric(quadric)
+        except:
+            # Fallback: skip the sphere if GLU fails
+            pass
 
         glDisable(GL_LIGHT1)
         glDisable(GL_LIGHT0)

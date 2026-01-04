@@ -118,7 +118,11 @@ class Scene(BaseScene):
         # see: http://www.opengl.org/resources/faq/technical/lights.htm#ligh0090
         glEnable(GL_RESCALE_NORMAL)
 
-        glutInit()
+        # Try to initialize GLUT if available (may not work on Windows)
+        try:
+            glutInit()
+        except:
+            pass  # GLUT not available, continue without it
 
         # Use try-finally to ensure matrices are properly popped even if exceptions occur
         self.view_ortho.begin(w, h)
@@ -218,7 +222,11 @@ class Scene(BaseScene):
                 glColor(*color)
                 # add padding to labels
                 glRasterPos(axis[0] + 2, axis[1] + 2, axis[2] + 2)
-                glutBitmapCharacter(GLUT_BITMAP_8_BY_13, ord(label))  # type:ignore
+                # Skip text rendering if GLUT is not available (Windows issue)
+                try:
+                    glutBitmapCharacter(GLUT_BITMAP_8_BY_13, ord(label))  # type:ignore
+                except:
+                    pass  # GLUT text rendering not available
         finally:
             glPopMatrix()
 
